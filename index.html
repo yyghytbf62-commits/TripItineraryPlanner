@@ -345,6 +345,11 @@ function addStop(){
   getActiveTrip().stops.push({ id: uid(), place:"", nights:2, notes:"", transport:null });
   scheduleSave(); render();
 }
+function insertStopAt(index){
+  const t = getActiveTrip();
+  t.stops.splice(index, 0, { id: uid(), place:"", nights:1, notes:"", transport:null });
+  scheduleSave(); render();
+}
 function removeStop(stopId){
   const t = getActiveTrip();
   if(t.stops.length <= 1) return;
