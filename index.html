@@ -163,6 +163,18 @@
     background:repeating-linear-gradient(to bottom, var(--line-3) 0, var(--line-3) 4px, transparent 4px, transparent 9px);
   }
   .connector-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:4px 0; }
+  .insert-btn{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:11px; color:var(--slate-3); background:transparent; border:1px dashed transparent;
+    border-radius:999px; padding:2px 8px; margin-left:auto; white-space:nowrap;
+  }
+  .insert-btn:hover{ color:var(--brass); border-color:var(--line-3); }
+  .insert-btn-top{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:11px; color:var(--slate-3); background:transparent; border:1px dashed var(--line-3);
+    border-radius:999px; padding:4px 12px; margin:0 0 8px 34px;
+  }
+  .insert-btn-top:hover{ color:var(--brass); border-color:var(--brass); }
   .mode-btn{
     display:flex; align-items:center; justify-content:center;
     width:32px; height:32px; border-radius:8px; border:1px solid var(--line-3);
@@ -294,9 +306,27 @@ let editingName = false;
 let saveTimer = null;
 let importErrorMsg = "";
 
+// ---- Storage abstraction ----
+// Inside Claude.ai this file runs as an artifact with window.storage (synced to your
+// account). Opened standalone (downloaded, hosted elsewhere) window.storage won't
+// exist, so we fall back to the browser's own localStorage for that context.
+const hasArtifactStorage = typeof window.storage !== "undefined" && window.storage !== null;
+const store = {
+  async get(key){
+    if(hasArtifactStorage) return window.storage.get(key);
+    const v = localStorage.getItem(key);
+    return v === null ? null : { key, value: v };
+  },
+  async set(key, value){
+    if(hasArtifactStorage) return window.storage.set(key, value);
+    localStorage.setItem(key, value);
+    return { key, value };
+  },
+};
+
 async function load(){
   try{
-    const res = await window.storage.get(STORAGE_KEY);
+    const res = await store.get(STORAGE_KEY);
     if(res && res.value){
       data = JSON.parse(res.value);
     } else {
@@ -315,7 +345,7 @@ async function load(){
 function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(data)); }
+    try{ await store.set(STORAGE_KEY, JSON.stringify(data)); }
     catch(e){ console.error("save failed", e); }
   }, 400);
 }
@@ -615,6 +645,14 @@ function render(){
   // Timeline
   const timeline = document.getElementById("timeline");
   timeline.innerHTML = "";
+
+  // insert-at-start control
+  const insertTop = document.createElement("button");
+  insertTop.className = "insert-btn-top wp-mono";
+  insertTop.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> insert waypoint';
+  insertTop.onclick = () => insertStopAt(0);
+  timeline.appendChild(insertTop);
+
   schedule.forEach((stop, i) => {
     const wrap = document.createElement("div");
     wrap.className = "stop-wrap";
@@ -726,6 +764,13 @@ function render(){
       costInput.value = (stop.transport && stop.transport.cost) || "";
       costInput.oninput = (e) => setTransport(stop.id, "cost", e.target.value);
       controls.appendChild(costInput);
+
+      const insertBtn = document.createElement("button");
+      insertBtn.className = "insert-btn wp-mono";
+      insertBtn.title = "Insert waypoint here";
+      insertBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> insert';
+      insertBtn.onclick = () => insertStopAt(i + 1);
+      controls.appendChild(insertBtn);
 
       conn.appendChild(controls);
       timeline.appendChild(conn);
