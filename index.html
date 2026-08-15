@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Waypoints — Trip Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16202E;
+    --ink-2:#1D2A3C;
+    --ink-3:#28394F;
+    --line:#263447;
+    --line-2:#33445C;
+    --line-3:#3A4A61;
+    --paper:#F6F1E4;
+    --paper-2:#EFE6CC;
+    --paper-3:#FBF8EF;
+    --paper-line:#D8CDA8;
+    --ink-text:#2C2411;
+    --ink-text-2:#4A3F27;
+    --ink-text-3:#8A7B54;
+    --cream:#F6F1E4;
+    --slate:#C9D3E0;
+    --slate-2:#8FA0B8;
+    --slate-3:#5D6B80;
+    --brass:#C08A3E;
+    --parkrun:#3E8E7C;
+    --parkrun-bg:#E4F1EC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .wp-serif{font-family:'Fraunces',serif;}
+  .wp-mono{font-family:'JetBrains Mono',monospace;}
+  input, textarea, button{ font-family:inherit; }
+  input, textarea{
+    background:transparent;
+    border:none;
+    outline:none;
+    color:inherit;
+    width:100%;
+  }
+  input::placeholder, textarea::placeholder{ color:#8B95A6; }
+  button{ cursor:pointer; }
+
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--ink);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-row{
+    padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .brand{ display:flex; align-items:center; gap:8px; color:var(--cream); }
+  .brand svg{ flex-shrink:0; }
+  .brand-name{ font-size:18px; font-weight:600; letter-spacing:0.02em; }
+  .trip-switch-btn{
+    color:var(--slate); border:1px solid var(--line-2); background:transparent;
+    font-size:12px; padding:7px 14px; border-radius:999px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .switcher{
+    background:var(--ink-2); border-top:1px solid var(--line);
+    padding:12px 24px;
+  }
+  .switcher-inner{ display:flex; flex-direction:column; gap:4px; max-width:480px; }
+  .trip-row{
+    display:flex; align-items:center; justify-content:space-between;
+    border-radius:10px; padding:6px 8px;
+  }
+  .trip-row.active{ background:var(--ink-3); }
+  .trip-row button.name-btn{
+    background:none; border:none; text-align:left; flex:1; color:var(--cream); font-size:14px; padding:2px 0;
+  }
+  .icon-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:8px; color:var(--slate-2);
+    background:transparent; border:none;
+  }
+  .new-trip-btn{
+    color:var(--brass); font-size:14px; display:flex; align-items:center; gap:6px;
+    padding:8px 8px; margin-top:2px; background:none; border:none;
+  }
+
+  .container{ max-width:640px; margin:0 auto; padding:24px 16px 96px; }
+  @media(min-width:640px){ .container{ padding-left:24px; padding-right:24px; } }
+
+  .trip-header{ margin-bottom:24px; }
+  .trip-name-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .trip-name-row h1{
+    margin:0; color:var(--cream); font-size:26px; font-weight:600;
+  }
+  .trip-name-edit-btn{ background:none; border:none; color:var(--slate-3); display:flex; }
+  .trip-name-input{
+    font-size:26px; font-weight:600; color:var(--cream); border-bottom:1px solid var(--line-3);
+  }
+  .meta-row{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px; font-size:13px; color:var(--slate-2);
+  }
+  .meta-row label{ display:flex; align-items:center; gap:8px; }
+  .meta-row input[type=date]{ color:var(--cream); width:auto; color-scheme:dark; }
+  .parkrun-key{
+    display:flex; align-items:center; gap:6px; font-size:12px; color:var(--parkrun);
+  }
+  .parkrun-dot{ width:8px; height:8px; border-radius:50%; background:var(--parkrun); flex-shrink:0; }
+
+  .stop-wrap{ margin-left:6px; position:relative; }
+  .stop-card{
+    background:var(--paper);
+    border-radius:14px;
+    position:relative;
+    padding:16px;
+    border-left:4px solid transparent;
+  }
+  .stop-card.has-parkrun{
+    border-left:4px solid var(--parkrun);
+  }
+  .notch{
+    position:absolute; width:22px; height:22px; border-radius:50%;
+    background:var(--ink); left:-15px; top:50%; transform:translateY(-50%);
+  }
+  .stop-inner{ display:flex; align-items:flex-start; gap:12px; }
+  .stop-main{ flex:1; min-width:0; }
+  .place-input{
+    font-family:'Fraunces',serif; font-size:18px; font-weight:600; color:var(--ink-text);
+  }
+  .stop-dates{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-text-3); margin-top:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .parkrun-badge{
+    display:inline-flex; align-items:center; gap:4px;
+    background:var(--parkrun-bg); color:var(--parkrun);
+    font-family:'Inter',sans-serif; font-weight:600; font-size:11px;
+    padding:2px 8px; border-radius:999px;
+  }
+  .notes-input{
+    font-size:14px; color:var(--ink-text-2); margin-top:8px; resize:none; overflow:hidden; display:block;
+  }
+  .stop-side{ display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
+  .nights-pill{
+    display:flex; align-items:center; gap:4px; background:var(--paper-2); border-radius:999px; padding:2px 6px;
+  }
+  .nights-btn{
+    width:24px; height:24px; border-radius:6px; border:1px solid var(--paper-line); background:var(--paper-3);
+    display:flex; align-items:center; justify-content:center; color:var(--ink-text-2); font-size:15px; line-height:1;
+  }
+  .nights-val{ font-family:'JetBrains Mono',monospace; font-size:13px; width:38px; text-align:center; color:var(--ink-text-2); }
+  .side-actions{ display:flex; gap:2px; }
+  .side-actions .icon-btn{ color:#7A6B4E; width:28px; height:28px; }
+  .side-actions .icon-btn:hover{ background:#EAE1C9; }
+  .side-actions .icon-btn:disabled{ opacity:0.3; cursor:default; }
+
+  .connector{
+    display:flex; align-items:stretch; gap:14px; padding-left:28px; margin:2px 0; padding-top:8px; padding-bottom:8px;
+  }
+  .connector-line{
+    width:2px; margin-left:17px;
+    background:repeating-linear-gradient(to bottom, var(--line-3) 0, var(--line-3) 4px, transparent 4px, transparent 9px);
+  }
+  .connector-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:4px 0; }
+  .mode-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:8px; border:1px solid var(--line-3);
+    color:var(--slate-2); background:transparent; font-size:15px;
+  }
+  .mode-btn.active{ background:var(--brass); border-color:var(--brass); color:var(--ink); }
+  .conn-input{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--slate);
+    border-bottom:1px dashed var(--line-3); padding:2px 0;
+  }
+  .conn-input.duration{ width:70px; }
+  .conn-input.cost{ width:55px; }
+
+  .add-stop-btn{
+    margin-top:12px; margin-left:6px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:14px; color:var(--slate-2); background:transparent;
+    border:1px dashed var(--line-3); border-radius:12px; padding:12px 16px; width:calc(100% - 6px);
+  }
+  .loading{ color:var(--cream); font-family:'JetBrains Mono',monospace; font-size:13px; text-align:center; padding-top:40vh; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">loading itinerary…</div>
+
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C08A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="brand-name wp-serif">Waypoints</span>
+      </div>
+      <button class="trip-switch-btn" id="switcherToggle">
+        <span id="switcherToggleLabel">trips</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+    <div class="switcher hidden" id="switcher">
+      <div class="switcher-inner" id="switcherList"></div>
+      <input type="file" id="importFileInput" accept="application/json,.json" style="display:none" />
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="trip-header">
+      <div class="trip-name-row" id="tripNameRow"></div>
+      <div class="meta-row" id="metaRow"></div>
+      <div class="parkrun-key">
+        <span class="parkrun-dot"></span>
+        <span>marks a destination where you're there for a Saturday parkrun (Friday night through)</span>
+      </div>
+    </div>
+    <div id="timeline"></div>
+    <button class="add-stop-btn" id="addStopBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add destination
+    </button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = "waypoints-data";
+
+const MODES = [
+  { id: "walk", label: "Walk", svg: '<path d="M13 4h3l2 4-2 4h-3z"/>', symbol:"🚶" },
+  { id: "train", label: "Train", symbol:"🚆" },
+  { id: "bus", label: "Bus", symbol:"🚌" },
+  { id: "car", label: "Drive", symbol:"🚗" },
+  { id: "flight", label: "Flight", symbol:"✈️" },
+  { id: "ferry", label: "Ferry", symbol:"⛴️" },
+];
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function blankTrip(name){
+  const start = new Date();
+  const y = start.getFullYear(), m = String(start.getMonth()+1).padStart(2,"0"), d = String(start.getDate()).padStart(2,"0");
+  return {
+    id: uid(),
+    name: name || "New trip",
+    startDate: `${y}-${m}-${d}`,
+    stops: [ { id: uid(), place: "", nights: 2, notes: "", transport: null } ],
+  };
+}
+
+// ---- UTC-safe date helpers (avoids local-timezone day-shift bugs) ----
+function parseDateStr(dateStr){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m-1, d, 12));
+}
+function addDays(date, days){
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+function fmtDate(d){
+  return d.toLocaleDateString(undefined, { weekday:"short", day:"numeric", month:"short", timeZone:"UTC" });
+}
+function fmtDateShort(d){
+  return d.toLocaleDateString(undefined, { day:"numeric", month:"short", timeZone:"UTC" });
+}
+// Friday = 5 in UTC day-of-week
+function nightsInclude(arrive, nights, targetDow){
+  for(let i=0;i<nights;i++){
+    const night = addDays(arrive, i);
+    if(night.getUTCDay() === targetDow) return true;
+  }
+  return false;
+}
+
+function computeSchedule(trip){
+  let running = parseDateStr(trip.startDate);
+  return trip.stops.map(stop => {
+    const nights = Number(stop.nights) || 0;
+    const arrive = running;
+    const depart = addDays(running, nights);
+    running = depart;
+    const hasParkrun = nights > 0 && nightsInclude(arrive, nights, 5); // Friday night -> there Sat morning
+    return { ...stop, arrive, depart, hasParkrun };
+  });
+}
+
+// ---- State ----
+let data = null;      // { activeTripId, trips: {id: trip} }
+let switcherOpen = false;
+let editingName = false;
+let saveTimer = null;
+let importErrorMsg = "";
+
+async function load(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY);
+    if(res && res.value){
+      data = JSON.parse(res.value);
+    } else {
+      const t = blankTrip("My next trip");
+      data = { activeTripId: t.id, trips: { [t.id]: t } };
+    }
+  } catch(e){
+    const t = blankTrip("My next trip");
+    data = { activeTripId: t.id, trips: { [t.id]: t } };
+  }
+  document.getElementById("loading").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  render();
+}
+
+function scheduleSave(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(data)); }
+    catch(e){ console.error("save failed", e); }
+  }, 400);
+}
+
+function getActiveTrip(){ return data.trips[data.activeTripId]; }
+
+// ---- Mutations ----
+function setTripField(field, value){
+  getActiveTrip()[field] = value;
+  scheduleSave();
+}
+function setStopField(stopId, field, value){
+  const t = getActiveTrip();
+  const s = t.stops.find(s => s.id === stopId);
+  if(s) s[field] = value;
+  scheduleSave();
+}
+function setTransport(afterStopId, field, value){
+  const t = getActiveTrip();
+  const s = t.stops.find(s => s.id === afterStopId);
+  if(!s) return;
+  if(!s.transport) s.transport = { mode:"train", duration:"", cost:"" };
+  s.transport[field] = value;
+  scheduleSave();
+}
+function addStop(){
+  getActiveTrip().stops.push({ id: uid(), place:"", nights:2, notes:"", transport:null });
+  scheduleSave(); render();
+}
+function removeStop(stopId){
+  const t = getActiveTrip();
+  if(t.stops.length <= 1) return;
+  t.stops = t.stops.filter(s => s.id !== stopId);
+  scheduleSave(); render();
+}
+function moveStop(index, dir){
+  const t = getActiveTrip();
+  const j = index + dir;
+  if(j < 0 || j >= t.stops.length) return;
+  [t.stops[index], t.stops[j]] = [t.stops[j], t.stops[index]];
+  scheduleSave(); render();
+}
+function newTrip(){
+  const t = blankTrip("Untitled trip");
+  data.trips[t.id] = t;
+  data.activeTripId = t.id;
+  switcherOpen = false;
+  scheduleSave(); render();
+}
+function duplicateTrip(id){
+  const src = data.trips[id];
+  const copy = { ...src, id: uid(), name: src.name + " (copy)", stops: src.stops.map(s => ({...s, id: uid()})) };
+  data.trips[copy.id] = copy;
+  data.activeTripId = copy.id;
+  switcherOpen = false;
+  scheduleSave(); render();
+}
+function deleteTrip(id){
+  delete data.trips[id];
+  if(id === data.activeTripId){
+    const remaining = Object.keys(data.trips);
+    if(remaining.length){ data.activeTripId = remaining[0]; }
+    else { const t = blankTrip("My next trip"); data.trips[t.id] = t; data.activeTripId = t.id; }
+  }
+  scheduleSave(); render();
+}
+function selectTrip(id){
+  data.activeTripId = id;
+  switcherOpen = false;
+  scheduleSave(); render();
+}
+
+function slugify(name){
+  return (name || "trip").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "trip";
+}
+
+function exportTrip(id){
+  const t = data.trips[id];
+  if(!t) return;
+  const payload = { waypointsExport: 1, trip: t };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugify(t.name)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function isValidTripShape(t){
+  return t && typeof t === "object" && typeof t.name === "string" &&
+    typeof t.startDate === "string" && Array.isArray(t.stops);
+}
+
+function normalizeImportedTrip(raw){
+  // Accept: {waypointsExport:1, trip:{...}}, a bare trip object, or {activeTripId, trips:{...}} (full backup)
+  let tripsToImport = [];
+  if(raw && raw.trips && typeof raw.trips === "object"){
+    tripsToImport = Object.values(raw.trips);
+  } else if(raw && raw.trip){
+    tripsToImport = [raw.trip];
+  } else {
+    tripsToImport = [raw];
+  }
+  return tripsToImport.filter(isValidTripShape).map(t => ({
+    id: uid(),
+    name: t.name || "Imported trip",
+    startDate: t.startDate,
+    stops: (t.stops || []).map(s => ({
+      id: uid(),
+      place: s.place || "",
+      nights: Number(s.nights) || 0,
+      notes: s.notes || "",
+      transport: s.transport ? { mode: s.transport.mode || "train", duration: s.transport.duration || "", cost: s.transport.cost || "" } : null,
+    })),
+  }));
+}
+
+function handleImportFile(file){
+  importErrorMsg = "";
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const raw = JSON.parse(e.target.result);
+      const imported = normalizeImportedTrip(raw);
+      if(!imported.length){
+        importErrorMsg = "Couldn't find a valid trip in that file.";
+        render();
+        return;
+      }
+      imported.forEach(t => { data.trips[t.id] = t; });
+      data.activeTripId = imported[0].id;
+      switcherOpen = true; // keep switcher open so multi-trip imports are visible
+      importErrorMsg = imported.length > 1 ? `Imported ${imported.length} trips.` : "";
+      scheduleSave(); render();
+    } catch(err){
+      importErrorMsg = "That file isn't valid JSON.";
+      render();
+    }
+  };
+  reader.onerror = () => { importErrorMsg = "Couldn't read that file."; render(); };
+  reader.readAsText(file);
+}
+
+// ---- Rendering ----
+function escapeHtml(s){
+  return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function autoGrow(el){
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
+function render(){
+  const trip = getActiveTrip();
+  const tripList = Object.values(data.trips).sort((a,b) => a.name.localeCompare(b.name));
+
+  // Switcher toggle label
+  document.getElementById("switcherToggleLabel").textContent = trip.name;
+
+  // Switcher panel
+  const switcherEl = document.getElementById("switcher");
+  switcherEl.classList.toggle("hidden", !switcherOpen);
+  const listEl = document.getElementById("switcherList");
+  listEl.innerHTML = "";
+  tripList.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "trip-row" + (t.id === data.activeTripId ? " active" : "");
+    const nameBtn = document.createElement("button");
+    nameBtn.className = "name-btn";
+    nameBtn.textContent = t.name;
+    nameBtn.onclick = () => selectTrip(t.id);
+    const actions = document.createElement("div");
+    actions.style.display = "flex"; actions.style.gap = "2px";
+    const dupBtn = document.createElement("button");
+    dupBtn.className = "icon-btn"; dupBtn.title = "Duplicate";
+    dupBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    dupBtn.onclick = () => duplicateTrip(t.id);
+    actions.appendChild(dupBtn);
+    const expBtn = document.createElement("button");
+    expBtn.className = "icon-btn"; expBtn.title = "Export as file";
+    expBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    expBtn.onclick = () => exportTrip(t.id);
+    actions.appendChild(expBtn);
+    if(tripList.length > 1){
+      const delBtn = document.createElement("button");
+      delBtn.className = "icon-btn"; delBtn.title = "Delete";
+      delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+      delBtn.onclick = () => deleteTrip(t.id);
+      actions.appendChild(delBtn);
+    }
+    row.appendChild(nameBtn); row.appendChild(actions);
+    listEl.appendChild(row);
+  });
+  const btnRow = document.createElement("div");
+  btnRow.style.display = "flex"; btnRow.style.gap = "4px"; btnRow.style.flexWrap = "wrap";
+  const newBtn = document.createElement("button");
+  newBtn.className = "new-trip-btn";
+  newBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New trip';
+  newBtn.onclick = newTrip;
+  const importBtn = document.createElement("button");
+  importBtn.className = "new-trip-btn";
+  importBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Import trip';
+  importBtn.onclick = () => document.getElementById("importFileInput").click();
+  btnRow.appendChild(newBtn); btnRow.appendChild(importBtn);
+  listEl.appendChild(btnRow);
+  const importErr = document.createElement("div");
+  importErr.id = "importError";
+  importErr.className = "wp-mono";
+  importErr.style.color = "#D97F6E"; importErr.style.fontSize = "12px"; importErr.style.marginTop = "4px";
+  importErr.textContent = importErrorMsg;
+  listEl.appendChild(importErr);
+
+  // Trip name row
+  const nameRow = document.getElementById("tripNameRow");
+  nameRow.innerHTML = "";
+  if(editingName){
+    const input = document.createElement("input");
+    input.className = "trip-name-input wp-serif";
+    input.value = trip.name;
+    input.onkeydown = (e) => {
+      if(e.key === "Enter"){
+        setTripField("name", input.value || "Untitled trip");
+        editingName = false; render();
+      }
+    };
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "trip-name-edit-btn";
+    confirmBtn.style.color = "var(--brass)";
+    confirmBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    confirmBtn.onclick = () => { setTripField("name", input.value || "Untitled trip"); editingName = false; render(); };
+    nameRow.appendChild(input); nameRow.appendChild(confirmBtn);
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+  } else {
+    const h1 = document.createElement("h1");
+    h1.className = "wp-serif";
+    h1.textContent = trip.name;
+    const editBtn = document.createElement("button");
+    editBtn.className = "trip-name-edit-btn";
+    editBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+    editBtn.onclick = () => { editingName = true; render(); };
+    nameRow.appendChild(h1); nameRow.appendChild(editBtn);
+  }
+
+  // Meta row
+  const schedule = computeSchedule(trip);
+  const totalNights = trip.stops.reduce((s,x) => s + (Number(x.nights)||0), 0);
+  const totalCost = trip.stops.reduce((s,x) => s + (x.transport ? Number(x.transport.cost)||0 : 0), 0);
+  const parkrunCount = schedule.filter(s => s.hasParkrun).length;
+  const endDate = schedule.length ? schedule[schedule.length-1].depart : null;
+
+  const metaRow = document.getElementById("metaRow");
+  metaRow.innerHTML = "";
+  const startLabel = document.createElement("label");
+  startLabel.innerHTML = "<span>Starts</span>";
+  const startInput = document.createElement("input");
+  startInput.type = "date";
+  startInput.className = "wp-mono";
+  startInput.value = trip.startDate;
+  startInput.onchange = (e) => { setTripField("startDate", e.target.value); render(); };
+  startLabel.appendChild(startInput);
+  metaRow.appendChild(startLabel);
+
+  const stats = document.createElement("span");
+  stats.className = "wp-mono";
+  stats.textContent = `${trip.stops.length} stops · ${totalNights} nights`;
+  metaRow.appendChild(stats);
+
+  if(endDate){
+    const endSpan = document.createElement("span");
+    endSpan.className = "wp-mono";
+    endSpan.textContent = `ends ${fmtDateShort(endDate)}`;
+    metaRow.appendChild(endSpan);
+  }
+  if(totalCost > 0){
+    const costSpan = document.createElement("span");
+    costSpan.className = "wp-mono";
+    costSpan.textContent = `~$${totalCost.toFixed(0)} transport`;
+    metaRow.appendChild(costSpan);
+  }
+  if(parkrunCount > 0){
+    const prSpan = document.createElement("span");
+    prSpan.className = "wp-mono";
+    prSpan.style.color = "var(--parkrun)";
+    prSpan.textContent = `🏃 ${parkrunCount} possible parkrun${parkrunCount>1?'s':''}`;
+    metaRow.appendChild(prSpan);
+  }
+
+  // Timeline
+  const timeline = document.getElementById("timeline");
+  timeline.innerHTML = "";
+  schedule.forEach((stop, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "stop-wrap";
+
+    const card = document.createElement("div");
+    card.className = "stop-card" + (stop.hasParkrun ? " has-parkrun" : "");
+    card.innerHTML = `<div class="notch"></div>`;
+
+    const inner = document.createElement("div");
+    inner.className = "stop-inner";
+
+    // main column
+    const main = document.createElement("div");
+    main.className = "stop-main";
+
+    const placeInput = document.createElement("input");
+    placeInput.className = "place-input wp-serif";
+    placeInput.placeholder = `Destination ${i+1}`;
+    placeInput.value = stop.place;
+    placeInput.oninput = (e) => setStopField(stop.id, "place", e.target.value);
+    main.appendChild(placeInput);
+
+    const datesDiv = document.createElement("div");
+    datesDiv.className = "stop-dates wp-mono";
+    datesDiv.innerHTML = `<span>${fmtDate(stop.arrive)} → ${fmtDate(stop.depart)}</span>` +
+      (stop.hasParkrun ? `<span class="parkrun-badge">🏃 parkrun Sat</span>` : "");
+    main.appendChild(datesDiv);
+
+    const notesInput = document.createElement("textarea");
+    notesInput.className = "notes-input";
+    notesInput.rows = 1;
+    notesInput.placeholder = "Notes — accommodation, must-dos…";
+    notesInput.value = stop.notes;
+    notesInput.oninput = (e) => { setStopField(stop.id, "notes", e.target.value); autoGrow(e.target); };
+    main.appendChild(notesInput);
+
+    inner.appendChild(main);
+
+    // side column
+    const side = document.createElement("div");
+    side.className = "stop-side";
+
+    const pill = document.createElement("div");
+    pill.className = "nights-pill";
+    const minusBtn = document.createElement("button");
+    minusBtn.className = "nights-btn"; minusBtn.textContent = "−";
+    minusBtn.onclick = () => { setStopField(stop.id, "nights", Math.max(0,(Number(stop.nights)||0)-1)); render(); };
+    const nightsVal = document.createElement("span");
+    nightsVal.className = "nights-val wp-mono";
+    nightsVal.textContent = `${stop.nights}n`;
+    const plusBtn = document.createElement("button");
+    plusBtn.className = "nights-btn"; plusBtn.textContent = "+";
+    plusBtn.onclick = () => { setStopField(stop.id, "nights", (Number(stop.nights)||0)+1); render(); };
+    pill.appendChild(minusBtn); pill.appendChild(nightsVal); pill.appendChild(plusBtn);
+    side.appendChild(pill);
+
+    const actions = document.createElement("div");
+    actions.className = "side-actions";
+    const upBtn = document.createElement("button");
+    upBtn.className = "icon-btn"; upBtn.disabled = i === 0;
+    upBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+    upBtn.onclick = () => moveStop(i, -1);
+    const downBtn = document.createElement("button");
+    downBtn.className = "icon-btn"; downBtn.disabled = i === schedule.length-1;
+    downBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    downBtn.onclick = () => moveStop(i, 1);
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn"; delBtn.disabled = schedule.length === 1;
+    delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+    delBtn.onclick = () => removeStop(stop.id);
+    actions.appendChild(upBtn); actions.appendChild(downBtn); actions.appendChild(delBtn);
+    side.appendChild(actions);
+
+    inner.appendChild(side);
+    card.appendChild(inner);
+    wrap.appendChild(card);
+    timeline.appendChild(wrap);
+
+    // schedule autoGrow for notes after insertion
+    setTimeout(() => autoGrow(notesInput), 0);
+
+    // connector to next stop
+    if(i < schedule.length - 1){
+      const conn = document.createElement("div");
+      conn.className = "connector";
+      const line = document.createElement("div");
+      line.className = "connector-line";
+      conn.appendChild(line);
+
+      const controls = document.createElement("div");
+      controls.className = "connector-controls";
+      MODES.forEach(m => {
+        const btn = document.createElement("button");
+        btn.className = "mode-btn" + (stop.transport && stop.transport.mode === m.id ? " active" : "");
+        btn.title = m.label;
+        btn.textContent = m.symbol;
+        btn.onclick = () => { setTransport(stop.id, "mode", m.id); render(); };
+        controls.appendChild(btn);
+      });
+      const durInput = document.createElement("input");
+      durInput.className = "conn-input duration wp-mono";
+      durInput.placeholder = "duration";
+      durInput.value = (stop.transport && stop.transport.duration) || "";
+      durInput.oninput = (e) => setTransport(stop.id, "duration", e.target.value);
+      controls.appendChild(durInput);
+      const costInput = document.createElement("input");
+      costInput.className = "conn-input cost wp-mono";
+      costInput.placeholder = "cost $";
+      costInput.value = (stop.transport && stop.transport.cost) || "";
+      costInput.oninput = (e) => setTransport(stop.id, "cost", e.target.value);
+      controls.appendChild(costInput);
+
+      conn.appendChild(controls);
+      timeline.appendChild(conn);
+    }
+  });
+}
+
+document.getElementById("switcherToggle").onclick = () => { switcherOpen = !switcherOpen; importErrorMsg = ""; render(); };
+document.getElementById("addStopBtn").onclick = addStop;
+document.getElementById("importFileInput").onchange = (e) => {
+  const file = e.target.files[0];
+  if(file) handleImportFile(file);
+  e.target.value = "";
+};
+
+load();
+</script>
+</body>
+</html>
